@@ -48,7 +48,7 @@ class UserAccountBehavior extends ModelBehavior {
  * 	username - the same as the Auth component username field
  * 	token - the field used for entering the (email) token. included here to reduce code repeition
  *
- * 	All Fields can be either "field" or "associatedModel.field"
+ * 	All Fields can be either "field", "associatedModel.field" or false.
  * Password Policies:
  * 	Define the rules for what is an acceptable password. salts as concatonated, that is the salt for 'strong'
  * 	includes all weaker policies
@@ -119,7 +119,7 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * afterSave method
+ * If the user's password/email/username was changed, notify the user by email.
  *
  * If the user's password, email or username are changed notify the user by email
  *
@@ -159,14 +159,12 @@ class UserAccountBehavior extends ModelBehavior {
 			$data[$Model->alias]['oldValue'] = $__usernameChanged;
 			$data[$Model->alias]['emailType'] = 'private';
 			$this->sendMail($Model, 'account_change', $data);
-			unset ($this->settings[$Model->alias]['__usernameChanged']);
+			unset($this->settings[$Model->alias]['__usernameChanged']);
 		}
 	}
 
 /**
- * beforeSave method
- *
- * If attempting to change the password, email or username make a note to be able to mail the user if successful
+ * Flag an attempt to change password/email/username, to be able to notify the user later, if successful.
  *
  * @access public
  * @return void
@@ -193,9 +191,9 @@ class UserAccountBehavior extends ModelBehavior {
 /**
  * beforeValidate method
  *
- * Setup validation rules
+ * Setup validation rules.
  * If a generated password is requested, and strength is selected - only allow modification
- * if the user selects a strength stronger than the system default
+ * if the user selects a strength stronger than the system default.
  *
  * @return void
  * @access public
@@ -204,7 +202,7 @@ class UserAccountBehavior extends ModelBehavior {
 		$this->_setupValidation($Model);
 		extract($this->settings[$Model->alias]);
 		if (!empty($Model->data[$Model->alias]['generate'])) {
-			unset ($Model->data[$Model->alias]['generate']);
+			unset($Model->data[$Model->alias]['generate']);
 			$strengths = array_keys($passwordPolicies);
 			$current = array_search($passwordPolicy, $strengths);
 			if (isset($Model->data[$Model->alias]['strength'])) {
@@ -223,9 +221,9 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * changePassword method
+ * Process a password change request.
  *
- * Process a change of password request
+ * This process is used when a logged in user tries to change his password.
  *
  * @param mixed $Model
  * @param mixed $data
@@ -248,7 +246,7 @@ class UserAccountBehavior extends ModelBehavior {
 			$message = __d('mi_users', 'Your password has been changed', true);
 			if (!empty($this->settings[$Model->alias]['tempPassword'])) {
 				$message .= sprintf(__d('mi_users', '. Your new password is <strong>%1$s</strong>', true), $this->settings[$Model->alias]['tempPassword']);
-				unset ($this->settings[$Model->alias]['tempPassword']);
+				unset($this->settings[$Model->alias]['tempPassword']);
 			}
 			return array(true, $message);
 		} else {
@@ -258,10 +256,9 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * confirmAccount method
+ * Process a user account confirmation request.
  *
- * Process a password confirmation request
- * If $password is true, return true on success - as this process forms the first part of a password reset
+ * This process forms the first part of a password reset, in that case $password is True.
  *
  * @param mixed $Model
  * @param array $data
@@ -378,7 +375,10 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * forgottenPassword method
+ * Process a forgotten password request.
+ *
+ * If Model has been modified within the last 24hs, the last valid token is sent.
+ * Otherwise, a new token will be generated and the last one will no longer be valid.
  *
  * Process a forgotten password request
  *
@@ -400,24 +400,24 @@ class UserAccountBehavior extends ModelBehavior {
 			));
 		}
 		$id = $Model->field($Model->primaryKey, $conditions);
-		$message = '';
+		$message = __d('mi_users', 'There was a problem requesting a password reset', true);
 		if ($id) {
 			$Model->id = $id;
 			//$Model->log($request, 'forgotten_password_valid');
 			$expires = strtotime($Model->field('modified')) + 60 * 60 * 24;
 			if ($expires < time()) {
-				$Model->save(array());
-			};
+				$Model->save(array(), false);
+			}
 			$data[$Model->alias]['token'] = $Model->token();
 			$data[$Model->alias]['emailType'] = 'private';
 			if ($this->sendMail($Model, 'forgotten_password', $data)) {
 				$message = __d('mi_users', 'password change email sent', true);
 				return array(true, $message);
 			}
-			$message = __d('mi_users', 'problem sending email', true);
+			$message = __d('mi_users', 'There was a problem sending an email', true);
 		} else {
 			//$Model->log($request, 'forgotten_password_invalid');
-			$message = __d('mi_users', 'password change email sent', true);
+			$message = __d('mi_users', 'A password reset has been requested, an email has been sent', true);
 			if (Configure::read()) {
 				$message .= ' <br />DEBUG:' . __d('mi_users', 'email not found', true);
 			}
@@ -427,10 +427,10 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * generatePassword method
+ * Generate a random password according to current password policies.
  *
- * The length of the password is the maximum of the requested length or the lenght specified by the current password
- * policy
+ * The length of the password is the maximum of the requested length or the length
+ * specified by the current password policy.
  *
  * @param mixed $Model
  * @param int $length
@@ -445,7 +445,7 @@ class UserAccountBehavior extends ModelBehavior {
 				$salt .= $policy['salt'];
 			}
 			if (isset($policy['length'])) {
-				$length = max ($length, $policy['length']);
+				$length = max($length, $policy['length']);
 			}
 			if ($name == $passwordPolicy) {
 				break;
@@ -517,9 +517,9 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * ResetPassword method
+ * Process a password reset request.
  *
- * Process a password reset request. If force is true, it is not necessary to enter the current/previous password
+ * If force is true, it is not necessary to enter the current/previous password
  *
  * @param mixed $Model
  * @param array $data
@@ -535,7 +535,7 @@ class UserAccountBehavior extends ModelBehavior {
 		}
 		if (!$force) {
 			if (!isset($data[$Model->alias][$fields['password']])) {
-				$message = __d('mi_users', 'please enter your new password', true);
+				$message = __d('mi_users', 'Please enter your new password', true);
 				return array(false, $message);
 			}
 		}
@@ -547,7 +547,7 @@ class UserAccountBehavior extends ModelBehavior {
 			$message = __d('mi_users', 'Your password has been changed. Please login', true);
 			if (!empty($this->settings[$Model->alias]['tempPassword'])) {
 				$message .= sprintf(__d('mi_users', '. Your new password is <strong>%1$s</strong>', true), $this->settings[$Model->alias]['tempPassword']);
-				unset ($this->settings[$Model->alias]['tempPassword']);
+				unset($this->settings[$Model->alias]['tempPassword']);
 			}
 			return array(true, $message);
 		}
@@ -555,10 +555,9 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * sendMail method
+ * Send the user an email.
  *
- * Send the user an email. Relies upon the existance of the (customizable) MiEmail class
- * in the application
+ * Relies upon the existance of the (customizable) MiEmail class in the application.
  *
  * @param mixed $Model
  * @param mixed $template
@@ -600,10 +599,9 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * token method
+ * Returns a token derived from the user record data.
  *
- * Returns a token derived from the user record data
- * If data is not passed, it is taken from the user record - using the settings defined for token
+ * If data is not passed, it is taken from the user record, using the settings defined for token.
  *
  * @param mixed $Model
  * @param array $data
@@ -629,7 +627,7 @@ class UserAccountBehavior extends ModelBehavior {
 		}
 		$return = Security::hash(serialize($data), null, true);
 		if ($length) {
-			while(strlen($return) < $length) {
+			while (strlen($return) < $length) {
 				$return .= Security::hash($return, null, true);
 			}
 			$return = substr($return, 0, $length);
@@ -665,9 +663,7 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validateConfirmMatch method
- *
- * Does the password confirm match the password
+ * Does the password confirm match the password?
  *
  * @param mixed $Model
  * @param mixed $data
@@ -683,9 +679,7 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validateCurrentPassword method
- *
- * Is the value the same as the current password
+ * Is the current password entered value the same as the user's password?
  *
  * @param mixed $Model
  * @param mixed $data
@@ -703,9 +697,7 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validatePasswordCase method
- *
- * At least one UPPER and one lower case letter?
+ * Does the new password contain at least one UPPER and one lower case letter?
  *
  * @param mixed $Model
  * @param mixed $data
@@ -730,13 +722,11 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validatePasswordDifferent method
- *
  * Is the new password different from the old one?
  *
  * @param mixed $Model
  * @param mixed $data
- * @param mixed $compare
+ * @param mixed $params
  * @return bool
  * @access public
  */
@@ -752,9 +742,7 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validatePasswordLength method
- *
- * Is the password at least as long as the current password policy minimum?
+ * Is the new password at least as long as the current password policy minimum?
  *
  * @param mixed $Model
  * @param mixed $data
@@ -774,9 +762,9 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validatePasswordNotEmpty method
+ * Is the new password empty?
  *
- * Detect an empty password
+ * An empty password can be one full of whitespaces (spaces, tabs or line breaks).
  *
  * @param mixed $Model
  * @param mixed $data
@@ -792,9 +780,7 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validatePasswordNumber method
- *
- * Contains 1 number, but isn't all numbers?
+ * Does the new password contain one number, but isn't all numbers?
  *
  * @param mixed $Model
  * @param mixed $data
@@ -819,9 +805,7 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validatePasswordSpecialChar method
- *
- * Contains at least 1 special char?
+ * Does the new password contain at least one special (not letters, digits or underscores) character?
  *
  * @param mixed $Model
  * @param mixed $data
@@ -843,13 +827,11 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * validatePasswordUsername method
- *
- * Does the password contain the username?
+ * Does the new password contain the username?
  *
  * @param mixed $Model
  * @param mixed $data
- * @param mixed $params
+ * @param mixed $compare
  * @return bool
  * @access public
  */
@@ -868,9 +850,7 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * generateRandom method
- *
- * Returns a random string of the requested length and using the passed salt
+ * Returns a random string of the requested length (salting the process).
  *
  * @param int $length
  * @param string $salt
@@ -878,7 +858,7 @@ class UserAccountBehavior extends ModelBehavior {
  * @access private
  */
 	function __generateRandom($length = 8, $salt = 'abcdefghijklmnopqrstuvwxyz0123456789') {
-		$salt = str_shuffle ($salt);
+		$salt = str_shuffle($salt);
 		$return = "";
 		$i = 0;
 		while ($i < $length) {
@@ -891,10 +871,11 @@ class UserAccountBehavior extends ModelBehavior {
 	}
 
 /**
- * setupValidation method
+ * Add validation rules specific to this behavior.
  *
- * Add validation rules specific to this behavior. Prepend the behaviors validation rules
- * To allow the behavior to modify the model's data for any other validation rules
+ * Prepend the behavior's validation rules. Set::merge() should be used inside
+ * $Model to correctly set $Model->validate
+ * To allow the behavior to modify the model's data for any other validation rules.
  *
  * @param mixed $Model
  * @return void
