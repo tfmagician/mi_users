@@ -280,7 +280,7 @@ class UserAccountBehavior extends ModelBehavior {
 				if (strpos('.', $field)) {
 					list($alias, $field) = explode($field, '.');
 				}
-				if (!$data[$alias][$field]) {
+				if (!isset($data[$alias][$field])) {
 					$missing = true;
 					if ($alias == $Model->alias) {
 						$Model->invalidate($field, 'missing');
@@ -651,7 +651,7 @@ class UserAccountBehavior extends ModelBehavior {
 		if (strpos('.', $field)) {
 			list($alias, $field) = explode($field, '.');
 		}
-		if (!$data[$alias][$field]) {
+		if (!isset($data[$alias][$field])) {
 			$missing = true;
 			if ($alias == $Model->alias) {
 				$Model->invalidate($field, 'missing');
