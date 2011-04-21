@@ -11,20 +11,20 @@
  * Licensed under The MIT License
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) 2008, Andy Dawson
- * @link          www.ad7six.com
- * @package       base
- * @subpackage    base.models.behaviors
- * @since         v 1.0
- * @license       http://www.opensource.org/licenses/mit-license.php The MIT License
+ * @copyright	 Copyright (c) 2008, Andy Dawson
+ * @link		  www.ad7six.com
+ * @package	   base
+ * @subpackage	base.models.behaviors
+ * @since		 v 1.0
+ * @license	   http://www.opensource.org/licenses/mit-license.php The MIT License
  */
 
 /**
  * UserAccountBehavior class
  *
- * @uses          ModelBehavior
- * @package       base
- * @subpackage    base.models.behaviors
+ * @uses		  ModelBehavior
+ * @package	   base
+ * @subpackage	base.models.behaviors
  */
 class UserAccountBehavior extends ModelBehavior {
 
@@ -69,6 +69,7 @@ class UserAccountBehavior extends ModelBehavior {
 		'sendEmails' => array(
 			'welcome' => true,
 			'accountChange' => true
+			'tokenExpired' => true,
 		),
 		'fields' => array(
 			'current' => 'current_password',
@@ -328,12 +329,14 @@ class UserAccountBehavior extends ModelBehavior {
 			$expires = strtotime($user[$Model->alias]['modified']) + 60 * 60 * 24;
 			if ($expires < time() && !$force) {
 				$Model->invalidate('token', 'expired');
-				if ($password) {
-					$this->sendMail($Model, 'new_password');
-					$message = __d('mi_users', 'email token expired', true);
-				} else {
-					$this->sendMail($Model, 'new_token');
-					$message = __d('mi_users', 'confirm email token expired', true);
+				if ($sendEmails['tokenExpired']) {
+					if ($password) {
+						$this->sendMail($Model, 'new_password');
+						$message = __d('mi_users', 'email token expired', true);
+					} else {
+						$this->sendMail($Model, 'new_token');
+						$message = __d('mi_users', 'confirm email token expired', true);
+					}
 				}
 				return array(false, $message);
 			}
