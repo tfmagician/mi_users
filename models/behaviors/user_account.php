@@ -68,7 +68,7 @@ class UserAccountBehavior extends ModelBehavior {
 	var $_defaultSettings = array(
 		'sendEmails' => array(
 			'welcome' => true,
-			'accountChange' => true
+			'accountChange' => true,
 			'tokenExpired' => true,
 		),
 		'fields' => array(
