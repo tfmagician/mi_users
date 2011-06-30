@@ -176,7 +176,6 @@ class RememberMeComponent extends Object {
 		if (empty($cookie['id']) || empty($cookie['token'])) {
 			$this->log('Cookie missing id or token');
 			$this->log($cookie);
-			$this->_cookieDestroy();
 			return;
 		}
 
