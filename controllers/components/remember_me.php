@@ -117,6 +117,7 @@ class RememberMeComponent extends Object {
 			$this->log('Disabling - Not the login action');
 			$this->enabled = false;
 		}
+        $this->enabled = true;
 	}
 
 /**
