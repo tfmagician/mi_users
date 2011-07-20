@@ -332,6 +332,7 @@ class RememberMeComponent extends Object {
 		$User = $this->Auth->getModel();
 		$conditions = array($User->primaryKey => $id);
 		$fields = $this->Auth->fields;
+        sort($fields);
 		$recursive = -1;
 		$data = $User->find('first', compact('conditions', 'fields', 'recursive'));
 		$return = Security::hash(serialize($data), null, true);
